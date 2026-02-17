@@ -11,17 +11,25 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from database import engine, get_db, Base
+from database import engine, get_db, Base, SessionLocal
 from models import Agreement, User
 import utils
 
-# Buat tabel database jika belum ada
-Base.metadata.create_all(bind=engine)
+# ============================================
+# CONFIGURATION
+# ============================================
+# Ganti dengan IP server Anda untuk deployment LAN
+# Contoh: SERVER_HOST = "192.168.1.100:8000"
+# Untuk localhost: SERVER_HOST = "localhost:8000"
+SERVER_HOST = "localhost:8000"
 
-# AUTH CONFIG
-SECRET_KEY = "supersecretkey" # Ganti dengan env var di production
+# Security Configuration
+SECRET_KEY = "your-secret-key-change-this-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+# Buat tabel database jika belum ada
+Base.metadata.create_all(bind=engine)
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -121,7 +129,7 @@ async def create_agreement(
     # 3. Generate QR Code with verification URL
     qr_filename = f"{file_hash}.png"
     qr_location = f"static/qr/{qr_filename}"
-    verification_url = f"http://localhost:8000/verify/{file_hash}"
+    verification_url = f"http://{SERVER_HOST}/verify/{file_hash}"
     utils.generate_qr_code(verification_url, qr_location)
     
     # 4. Simpan ke Database (v1)
@@ -177,7 +185,7 @@ async def create_new_version(
     # 3. QR Code with verification URL
     qr_filename = f"{file_hash}.png"
     qr_location = f"static/qr/{qr_filename}"
-    verification_url = f"http://localhost:8000/verify/{file_hash}"
+    verification_url = f"http://{SERVER_HOST}/verify/{file_hash}"
     utils.generate_qr_code(verification_url, qr_location)
     
     # 4. Determine Version Number & Root Parent
