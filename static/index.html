@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Dokumen - AMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold">V
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-slate-900">AMS Verify</span>
+                </div>
+                <div>
+                    <a href="/login"
+                        class="text-slate-500 hover:text-indigo-600 font-medium text-sm transition-colors">Admin
+                        Login</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+        <h1 class="text-4xl font-bold text-slate-900 mb-4">Cek Keaslian Dokumen</h1>
+        <p class="text-lg text-slate-600 mb-8">Unggah dokumen atau masukkan Kode Hash untuk memverifikasi integritas dan
+            status terkini.</p>
+
+        <!-- Search Box -->
+        <div class="bg-white p-2 rounded-2xl shadow-lg border border-slate-200 flex gap-2 max-w-xl mx-auto mb-12">
+            <input type="text" id="hashInput" placeholder="Tempel kode hash di sini..."
+                class="flex-1 px-4 py-3 outline-none rounded-xl text-slate-700 placeholder-slate-400">
+            <button onclick="verifyByHash()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-semibold transition-all">
+                Cek
+            </button>
+        </div>
+
+        <!-- Drag Drop Zone (Simulation for now, real hasing needs JS lib or server upload) -->
+        <!-- Note: We used server upload in previous version. To verify file content, we normally calculate hash client side or upload to a 'verify' endpoint. 
+             Since we don't have a 'verify-file' endpoint that DOESN'T store, we will just use the hash input for now or ask user to get the hash. 
+             But wait, we can implement a client-side hash! -->
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+        <div class="relative border-2 border-dashed border-slate-300 rounded-2xl p-10 hover:bg-slate-50 transition-colors text-center cursor-pointer max-w-xl mx-auto"
+            onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" class="hidden">
+            <svg class="mx-auto h-12 w-12 text-slate-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                <path
+                    d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <p class="text-sm text-slate-600 font-medium">Klik untuk pilih file PDF</p>
+            <p class="text-xs text-slate-400 mt-1">Kami akan menghitung hash file ini di browser Anda.</p>
+        </div>
+
+        <!-- Result -->
+        <div id="resultArea"
+            class="mt-12 hidden text-left max-w-xl mx-auto bg-white p-6 rounded-xl shadow border border-slate-100">
+            <div class="flex items-center gap-4 mb-4">
+                <div id="statusIcon" class="w-10 h-10 rounded-full flex items-center justify-center text-xl"></div>
+                <div>
+                    <h3 id="statusTitle" class="font-bold text-lg"></h3>
+                    <p id="statusDesc" class="text-sm text-slate-500"></p>
+                </div>
+            </div>
+            <div class="bg-slate-50 p-4 rounded-lg text-sm space-y-2">
+                <div class="flex justify-between border-b border-slate-200 pb-2">
+                    <span class="text-slate-500">Judul:</span>
+                    <span id="resTitle" class="font-medium text-slate-800 text-right"></span>
+                </div>
+                <div class="flex justify-between border-b border-slate-200 pb-2">
+                    <span class="text-slate-500">Versi:</span>
+                    <span id="resVersion" class="font-medium text-slate-800"></span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Terdaftar:</span>
+                    <span id="resDate" class="font-medium text-slate-800"></span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Client-side Hashing using CryptoJS (simplification, meant for small files)
+        // ideally use Web Crypto API for performance
+
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const binary = event.target.result;
+                const wordArray = CryptoJS.lib.WordArray.create(binary);
+                const hash = CryptoJS.SHA256(wordArray).toString();
+                document.getElementById('hashInput').value = hash;
+                verifyByHash(hash);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        async function verifyByHash(inputHash) {
+            const hash = inputHash || document.getElementById('hashInput').value.trim();
+            if (!hash) return alert('Masukkan hash atau upload file!');
+
+            const resultArea = document.getElementById('resultArea');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusDesc = document.getElementById('statusDesc');
+
+            resultArea.classList.remove('hidden');
+            statusTitle.textContent = 'Memeriksa...';
+            statusIcon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl bg-slate-100 animate-pulse';
+            statusIcon.textContent = '⏳';
+
+            try {
+                const response = await fetch('/verify/' + hash);
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusIcon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl bg-green-100 text-green-600';
+                    statusIcon.textContent = '✅';
+                    statusTitle.textContent = 'Dokumen Valid';
+                    statusDesc.textContent = 'Dokumen ini terdaftar resmi dalam database kami.';
+
+                    document.getElementById('resTitle').textContent = data.agreement.title;
+                    document.getElementById('resVersion').textContent = 'v' + data.agreement.version;
+                    document.getElementById('resDate').textContent = new Date(data.agreement.timestamp).toLocaleString();
+                } else {
+                    throw new Error('Dokumen tidak ditemukan');
+                }
+            } catch (error) {
+                statusIcon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl bg-red-100 text-red-600';
+                statusIcon.textContent = '❌';
+                statusTitle.textContent = 'Tidak Ditemukan';
+                statusDesc.textContent = 'Hash dokumen tidak cocok dengan database kami.';
+                document.getElementById('resTitle').textContent = '-';
+                document.getElementById('resVersion').textContent = '-';
+                document.getElementById('resDate').textContent = '-';
+            }
+        }
+    </script>
+</body>
+
+</html>
